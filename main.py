@@ -1,5 +1,46 @@
 import pygame
 import random
+from abc import ABC, abstractmethod
+
+SZEROKOSC = 800
+WYSOKOSC = 600
+
+class Object(ABC):
+    @abstractmethod
+    def move(self,direction):
+        pass
+
+
+
+class Enemy(Object):
+    def __init__(self):
+        __size = 40
+        __speed = 3
+
+    def move(self,direction):
+        pass
+
+class Player(Object):
+    def __init__(self):
+        self.__size = 30
+        self.__speed = 8
+        self.__x = SZEROKOSC // 8 - self.__size// 2
+        self.__y = WYSOKOSC - 70
+
+    def move(self,direction:str):
+        if direction == "right":
+            self.__x = self.__x + self.__speed
+        elif direction == "left":
+            self.__x = self.__x - self.__speed
+        elif direction == "up":
+            self.__y = self.__y + self.__speed
+        elif direction == "down":
+            self.__y = self.__y - self.__speed
+
+
+
+
+
 
 # 1. Inicjalizacja
 pygame.init()
