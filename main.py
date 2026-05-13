@@ -3,7 +3,7 @@ import random
 
 # 1. Inicjalizacja
 pygame.init()
-
+random
 # 2. Parametry okna
 SZEROKOSC = 800
 WYSOKOSC = 600
