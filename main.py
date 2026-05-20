@@ -8,6 +8,50 @@ from abc import ABC, abstractmethod
 SZEROKOSC = 800
 WYSOKOSC = 600
 
+
+
+
+
+
+# 1. Baza dla wszystkich stanów gracza
+class PlayerState(ABC):
+    @abstractmethod
+    def handle_collision(self, player) -> bool:
+        "''Zwraca True, jeśli gra powinna się zakończyć"""
+        pass
+
+    @abstractmethod
+    def get_color(self) -> tuple:
+        pass
+
+    # 2. KONKRETNY STAN: Normalny gracz
+
+
+class NormalState(PlayerState):
+    def handle_collision(self, player) -> bool:
+        print("KONIEC GRY!")
+        return False  # Ustawia 'uruchomiona = False' w pętli gry
+
+    def get_color(self) -> tuple:
+        return (0, 0, 0)  # Standardowy czarny kolor
+
+    # 3. KONKRETNY STAN: Nieśmiertelny gracz (z czasem trwania)
+
+
+class InvincibleState(PlayerState):
+    def __init__(self, duration_frames=180):  # Np. 3 sekundy przy 60 FPS
+        self.frames_left = duration_frames
+
+    def handle_collision(self, player) -> bool:
+        print("BUM! Wróg odbija się od tarczy!")
+        return True  # Ignorujemy obrażenia, gra toczy się dalej
+
+    def get_color(self) -> tuple:
+        # Możemy zrobić efekt migania tarczy!
+        return (0, 191, 255)  # Świecący niebieski (Deep Sky Blue)
+
+
+
 class Object(ABC):
     @abstractmethod
     def move(self,direction):
@@ -44,27 +88,33 @@ class Player(Object):
     def __init__(self):
         self.__size = 30
         self.__speed = 8
-        self.__x = SZEROKOSC // 8 - self.__size// 2
-        self.__y = WYSOKOSC - 70
+        self.state: PlayerState = NormalState()
+        self.rect = pygame.Rect(SZEROKOSC // 8 - self.__size// 2,  WYSOKOSC - 70, self.__size, self.__size)
 
+    def update_state(self):
+        """Metoda wywoływana co klatkę w pętli gry"""
+        if isinstance(self.state, InvincibleState):
+            self.state.frames_left -= 1
+            if self.state.frames_left <= 0:
+                print("Tarcza wygasła!")
+                self.state = NormalState()  # Powrót do normalności
 
     def move(self, direction: str):
         if direction == "right":
-            self.__x += self.__speed
+            self.rect.x += self.__speed
         elif direction == "left":
-            self.__x -= self.__speed
+            self.rect.x -= self.__speed
         elif direction == "up":
-            self.__y -= self.__speed  # W Pygame góra to odejmowanie Y
+            self.rect.y -= self.__speed  # W Pygame góra to odejmowanie Y
         elif direction == "down":
-            self.__y += self.__speed  # W Pygame dół to dodawanie Y
+            self.rect.y += self.__speed  # W Pygame dół to dodawanie Y
 
     @property
-    def x(self) -> float:
-        ret = deepcopy(self.__x)
-        return ret
+    def x(self) -> int:
+        return self.rect.x
     @property
-    def y(self) -> float:
-        return deepcopy(self.__y)
+    def y(self) -> int:
+        return self.rect.y
     @property
     def size(self):
         return deepcopy(self.__size)
@@ -75,25 +125,14 @@ class Player(Object):
 pygame.init()
 
 # 2. Parametry okna
-'''
-SZEROKOSC = 800
-WYSOKOSC = 600
-'''
+
 ekran = pygame.display.set_mode((SZEROKOSC, WYSOKOSC))
 pygame.display.set_caption("Unikaj spadających kwadratów!")
 
 # 3. Ustawienia gracza
 gracz1 = Player()
 gracz2 = Player()
-'''
-ROZMIAR_GRACZA = 30
-gracz1_x = SZEROKOSC // 8 - ROZMIAR_GRACZA // 2
-gracz1_y = WYSOKOSC - 70
-predkosc_gracza = 8
 
-gracz2_x = SZEROKOSC // 2 - ROZMIAR_GRACZA // 2
-gracz2_y = WYSOKOSC - 70
-'''
 # 4. Ustawienia przeszkód
 CZAS_SPAWNU = 60  # Co ile klatek pojawia się nowy wróg (ok. 0.5 sekundy)
 licznik_czasu = 0
@@ -144,17 +183,24 @@ while uruchomiona:
         licznik_czasu = 0
 
     # D. Logika wrogów i kolizje
-    gracz_rect1 = pygame.Rect(gracz1.x, gracz1.y, gracz1.size, gracz1.size)
-    gracz_rect2 = pygame.Rect(gracz2.x, gracz2.y, gracz2.size, gracz2.size)
+
+
+    gracz1.update_state()
+    gracz2.update_state()
 
     # B. Logika, Ruch i Kolizje
     for wrog in wrogowie[:]:
         wrog.move()  # Wywołanie metody ruchu z klasy Enemy
 
-        # Sprawdzenie kolizji z graczami
-        if gracz_rect1.colliderect(wrog.rect) or gracz_rect2.colliderect(wrog.rect):
-            print("KONIEC GRY!")
-            uruchomiona = False
+        # Sprawdzenie kolizji
+        if gracz1.rect.colliderect(wrog.rect):
+            # Stan sam decyduje, czy gra się kończy!
+            uruchomiona = gracz1.state.handle_collision(gracz1)
+            if not uruchomiona: break
+
+        if gracz2.rect.colliderect(wrog.rect):
+            uruchomiona = gracz2.state.handle_collision(gracz2)
+            if not uruchomiona: break
 
         # Usuwanie wrogów poza ekranem
         if wrog.rect.y > WYSOKOSC or wrog.rect.x > SZEROKOSC:
@@ -167,8 +213,8 @@ while uruchomiona:
     ekran.fill((255, 255, 255))  # Białe tło
 
     # Rysujemy gracza (czarny)
-    pygame.draw.rect(ekran, (0, 0, 0), gracz_rect1)
-    pygame.draw.rect(ekran, (0, 255, 0), gracz_rect2)
+    pygame.draw.rect(ekran, (0, 0, 0), gracz1.rect)
+    pygame.draw.rect(ekran, (0, 255, 0), gracz2.rect)
 
     # C. Rysowanie wrogów
     for wrog in wrogowie:
