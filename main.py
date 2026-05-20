@@ -16,12 +16,29 @@ class Object(ABC):
 
 
 class Enemy(Object):
-    def __init__(self):
-        __size = 40
-        __speed = 3
+    def __init__(self, typ: str):
+        self.size = 40
+        self.speed = 3
+        self.typ = typ  # "v" - leci w pionie, "h" - leci w poziomie
 
-    def move(self,direction:str):
-        pass
+        # Losowanie pozycji startowej w zależności od typu wroga
+        if self.typ == "v":
+            x = random.randint(0, SZEROKOSC - self.size)
+            y = -self.size
+        else:  # "h"
+            x = -self.size
+            y = random.randint(0, WYSOKOSC - self.size)
+
+        self.rect = pygame.Rect(x, y, self.size, self.size)
+
+    def move(self, direction: str = ""):
+        # Wróg sam wie, w którą stronę ma się poruszać na podstawie swojego typu
+        if self.typ == "v":
+            self.rect.y += self.speed
+        elif self.typ == "h":
+            self.rect.x += self.speed
+
+
 
 class Player(Object):
     def __init__(self):
@@ -31,15 +48,15 @@ class Player(Object):
         self.__y = WYSOKOSC - 70
 
 
-    def move(self,direction:str):
+    def move(self, direction: str):
         if direction == "right":
-            self.__x = self.__x + self.__speed
+            self.__x += self.__speed
         elif direction == "left":
-            self.__x = self.__x - self.__speed
+            self.__x -= self.__speed
         elif direction == "up":
-            self.__y = self.__y - self.__speed
+            self.__y -= self.__speed  # W Pygame góra to odejmowanie Y
         elif direction == "down":
-            self.__y = self.__y + self.__speed
+            self.__y += self.__speed  # W Pygame dół to dodawanie Y
 
     @property
     def x(self) -> float:
@@ -78,12 +95,10 @@ gracz2_x = SZEROKOSC // 2 - ROZMIAR_GRACZA // 2
 gracz2_y = WYSOKOSC - 70
 '''
 # 4. Ustawienia przeszkód
-ROZMIAR_WROGA = 40
-predkosc_wroga = 3
-wrogowie_v = []
-wrogowie_h = []# Lista przechowująca aktywne przeszkody
 CZAS_SPAWNU = 60  # Co ile klatek pojawia się nowy wróg (ok. 0.5 sekundy)
 licznik_czasu = 0
+# 1. Inicjalizacja jednej wspólnej listy na wszystkich wrogów
+wrogowie: list[Enemy] = []
 
 # 5. Zegar
 zegar = pygame.time.Clock()
@@ -98,80 +113,55 @@ while uruchomiona:
 
     # B. Ruch gracza (A / D)
     klawisze = pygame.key.get_pressed()
-    if klawisze[pygame.K_d] and gracz1.x > 0:
-        gracz1.move("right")
-    if klawisze[pygame.K_a] and gracz1.x < SZEROKOSC - gracz1.size:
+    if klawisze[pygame.K_a] and gracz1.x > 0:
         gracz1.move("left")
+    if klawisze[pygame.K_d] and gracz1.x < SZEROKOSC - gracz1.size:
+        gracz1.move("right")
     # ruch gracza w / s
-    if klawisze[pygame.K_s] and gracz1.y > 0:
-        gracz1.move("down")
-    if klawisze[pygame.K_w] and gracz1.y < WYSOKOSC - gracz1.size:
+    if klawisze[pygame.K_w] and gracz1.y > 0:
         gracz1.move("up")
+    if klawisze[pygame.K_s] and gracz1.y < WYSOKOSC - gracz1.size:
+        gracz1.move("down")
 
 # drugi gracz
     klawisze = pygame.key.get_pressed()
-    if klawisze[pygame.K_l] and gracz2.x > 0:
-        gracz2.move("right")
-    if klawisze[pygame.K_j] and gracz2.x < SZEROKOSC - gracz2.size:
+    if klawisze[pygame.K_j] and gracz2.x > 0:
         gracz2.move("left")
-    if klawisze[pygame.K_k] and gracz2.y > 0:
-        gracz2.move("down")
-    if klawisze[pygame.K_i] and gracz2.y < WYSOKOSC - gracz2.size:
+    if klawisze[pygame.K_l] and gracz2.x < SZEROKOSC - gracz2.size:
+        gracz2.move("right")
+    if klawisze[pygame.K_i] and gracz2.y > 0:
         gracz2.move("up")
+    if klawisze[pygame.K_k] and gracz2.y < WYSOKOSC - gracz2.size:
+        gracz2.move("down")
 
+    # --- KOD GENERUJĄCY I ZARZĄDZAJĄCY PRZESZKODAMI ---
 
-    # C. Generowanie przeszkód
+    # A. Generowanie (Spawn)
     licznik_czasu += 1
     if licznik_czasu >= CZAS_SPAWNU:
-        nowy_wrog_x = random.randint(0, SZEROKOSC - ROZMIAR_WROGA)
-        nowy_wrog_y = random.randint(0, WYSOKOSC - ROZMIAR_WROGA)
-        # Dodajemy listę [x, y] dla każdego nowego wroga
-        wrogowie_v.append([nowy_wrog_x, -ROZMIAR_WROGA])
-        wrogowie_h.append([-ROZMIAR_WROGA,nowy_wrog_y])
+        wrogowie.append(Enemy(typ="v"))
+        wrogowie.append(Enemy(typ="h"))
         licznik_czasu = 0
 
     # D. Logika wrogów i kolizje
     gracz_rect1 = pygame.Rect(gracz1.x, gracz1.y, gracz1.size, gracz1.size)
     gracz_rect2 = pygame.Rect(gracz2.x, gracz2.y, gracz2.size, gracz2.size)
 
-    for wrog in wrogowie_v[:]:  # Używamy kopii listy [:], aby móc bezpiecznie usuwać elementy
-        wrog[1] += predkosc_wroga  # Zwiększamy Y (spadanie)
+    # B. Logika, Ruch i Kolizje
+    for wrog in wrogowie[:]:
+        wrog.move()  # Wywołanie metody ruchu z klasy Enemy
 
-
-        # Tworzymy rect dla wroga do wykrywania kolizji
-        wrog_rect = pygame.Rect(wrog[0], wrog[1], ROZMIAR_WROGA, ROZMIAR_WROGA)
-
-        # Sprawdzanie kolizji
-        if gracz_rect1.colliderect(wrog_rect):
-            print("KONIEC GRY! Zostałeś trafiony.")
+        # Sprawdzenie kolizji z graczami
+        if gracz_rect1.colliderect(wrog.rect) or gracz_rect2.colliderect(wrog.rect):
+            print("KONIEC GRY!")
             uruchomiona = False
 
-        if gracz_rect2.colliderect(wrog_rect):
-            print("KONIEC GRY! Zostałeś trafiony.")
-            uruchomiona = False
+        # Usuwanie wrogów poza ekranem
+        if wrog.rect.y > WYSOKOSC or wrog.rect.x > SZEROKOSC:
+            wrogowie.remove(wrog)
 
-        # Usuwanie wrogów, którzy wylecieli za ekran
-        if wrog[1] > WYSOKOSC:
-            wrogowie_v.remove(wrog)
 
-    for wrog in wrogowie_h[:]:  # Używamy kopii listy [:], aby móc bezpiecznie usuwać elementy
-        wrog[0] += predkosc_wroga  # Zwiększamy X (leci w lewo)
 
-        # Tworzymy rect dla wroga do wykrywania kolizji
-        wrog_rect = pygame.Rect(wrog[0], wrog[1], ROZMIAR_WROGA, ROZMIAR_WROGA)
-
-        # Sprawdzanie kolizji
-        if gracz_rect1.colliderect(wrog_rect):
-            print("KONIEC GRY! Zostałeś trafiony.")
-            uruchomiona = False
-
-        if gracz_rect2.colliderect(wrog_rect):
-            print("KONIEC GRY! Zostałeś trafiony.")
-            uruchomiona = False
-
-        # Usuwanie wrogów, którzy wylecieli za ekran
-        if wrog[1] > WYSOKOSC:
-            wrogowie_h.remove(wrog)
 
     # E. Rysowanie
     ekran.fill((255, 255, 255))  # Białe tło
@@ -180,12 +170,10 @@ while uruchomiona:
     pygame.draw.rect(ekran, (0, 0, 0), gracz_rect1)
     pygame.draw.rect(ekran, (0, 255, 0), gracz_rect2)
 
-    # Rysujemy wrogów (czerwoni)
-    for wrog in wrogowie_v:
-        pygame.draw.rect(ekran, (255, 0, 0), (wrog[0], wrog[1], ROZMIAR_WROGA, ROZMIAR_WROGA))
-
-    for wrog in wrogowie_h:
-        pygame.draw.rect(ekran, (200, 0, 0), (wrog[0], wrog[1], ROZMIAR_WROGA, ROZMIAR_WROGA))
+    # C. Rysowanie wrogów
+    for wrog in wrogowie:
+        kolor = (255, 0, 0) if wrog.typ == "v" else (200, 0, 0)
+        pygame.draw.rect(ekran, kolor, wrog.rect)
 
     # F. Odświeżenie
     pygame.display.flip()
