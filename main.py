@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import List
+from copy import deepcopy
 import pygame
 import random
 from abc import ABC, abstractmethod
@@ -17,7 +20,7 @@ class Enemy(Object):
         __size = 40
         __speed = 3
 
-    def move(self,direction):
+    def move(self,direction:str):
         pass
 
 class Player(Object):
@@ -27,18 +30,27 @@ class Player(Object):
         self.__x = SZEROKOSC // 8 - self.__size// 2
         self.__y = WYSOKOSC - 70
 
+
     def move(self,direction:str):
         if direction == "right":
             self.__x = self.__x + self.__speed
         elif direction == "left":
             self.__x = self.__x - self.__speed
         elif direction == "up":
-            self.__y = self.__y + self.__speed
-        elif direction == "down":
             self.__y = self.__y - self.__speed
+        elif direction == "down":
+            self.__y = self.__y + self.__speed
 
-
-
+    @property
+    def x(self) -> float:
+        ret = deepcopy(self.__x)
+        return ret
+    @property
+    def y(self) -> float:
+        return deepcopy(self.__y)
+    @property
+    def size(self):
+        return deepcopy(self.__size)
 
 
 
@@ -46,12 +58,17 @@ class Player(Object):
 pygame.init()
 
 # 2. Parametry okna
+'''
 SZEROKOSC = 800
 WYSOKOSC = 600
+'''
 ekran = pygame.display.set_mode((SZEROKOSC, WYSOKOSC))
 pygame.display.set_caption("Unikaj spadających kwadratów!")
 
 # 3. Ustawienia gracza
+gracz1 = Player()
+gracz2 = Player()
+'''
 ROZMIAR_GRACZA = 30
 gracz1_x = SZEROKOSC // 8 - ROZMIAR_GRACZA // 2
 gracz1_y = WYSOKOSC - 70
@@ -59,7 +76,7 @@ predkosc_gracza = 8
 
 gracz2_x = SZEROKOSC // 2 - ROZMIAR_GRACZA // 2
 gracz2_y = WYSOKOSC - 70
-
+'''
 # 4. Ustawienia przeszkód
 ROZMIAR_WROGA = 40
 predkosc_wroga = 3
@@ -81,26 +98,26 @@ while uruchomiona:
 
     # B. Ruch gracza (A / D)
     klawisze = pygame.key.get_pressed()
-    if klawisze[pygame.K_a] and gracz1_x > 0:
-        gracz1_x -= predkosc_gracza
-    if klawisze[pygame.K_d] and gracz1_x < SZEROKOSC - ROZMIAR_GRACZA:
-        gracz1_x += predkosc_gracza
+    if klawisze[pygame.K_d] and gracz1.x > 0:
+        gracz1.move("right")
+    if klawisze[pygame.K_a] and gracz1.x < SZEROKOSC - gracz1.size:
+        gracz1.move("left")
     # ruch gracza w / s
-    if klawisze[pygame.K_w] and gracz1_y > 0:
-        gracz1_y -= predkosc_gracza
-    if klawisze[pygame.K_s] and gracz1_y < WYSOKOSC - ROZMIAR_GRACZA:
-        gracz1_y += predkosc_gracza
+    if klawisze[pygame.K_s] and gracz1.y > 0:
+        gracz1.move("down")
+    if klawisze[pygame.K_w] and gracz1.y < WYSOKOSC - gracz1.size:
+        gracz1.move("up")
 
 # drugi gracz
-    if klawisze[pygame.K_j] and gracz2_x > 0:
-        gracz2_x -= predkosc_gracza
-    if klawisze[pygame.K_l] and gracz2_x < SZEROKOSC - ROZMIAR_GRACZA:
-        gracz2_x += predkosc_gracza
-
-    if klawisze[pygame.K_i] and gracz2_y > 0:
-        gracz2_y -= predkosc_gracza
-    if klawisze[pygame.K_k] and gracz2_y < WYSOKOSC - ROZMIAR_GRACZA:
-        gracz2_y += predkosc_gracza
+    klawisze = pygame.key.get_pressed()
+    if klawisze[pygame.K_l] and gracz2.x > 0:
+        gracz2.move("right")
+    if klawisze[pygame.K_j] and gracz2.x < SZEROKOSC - gracz2.size:
+        gracz2.move("left")
+    if klawisze[pygame.K_k] and gracz2.y > 0:
+        gracz2.move("down")
+    if klawisze[pygame.K_i] and gracz2.y < WYSOKOSC - gracz2.size:
+        gracz2.move("up")
 
 
     # C. Generowanie przeszkód
@@ -114,8 +131,8 @@ while uruchomiona:
         licznik_czasu = 0
 
     # D. Logika wrogów i kolizje
-    gracz_rect1 = pygame.Rect(gracz1_x, gracz1_y, ROZMIAR_GRACZA, ROZMIAR_GRACZA)
-    gracz_rect2 = pygame.Rect(gracz2_x, gracz2_y, ROZMIAR_GRACZA, ROZMIAR_GRACZA)
+    gracz_rect1 = pygame.Rect(gracz1.x, gracz1.y, gracz1.size, gracz1.size)
+    gracz_rect2 = pygame.Rect(gracz2.x, gracz2.y, gracz2.size, gracz2.size)
 
     for wrog in wrogowie_v[:]:  # Używamy kopii listy [:], aby móc bezpiecznie usuwać elementy
         wrog[1] += predkosc_wroga  # Zwiększamy Y (spadanie)
